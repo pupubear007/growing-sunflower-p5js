@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🌻 Growing Sunflower • p5.js</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #020202;
+      color: #ff0;
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .main {
+      display: flex;
+      background: #050505;
+      border-radius: 16px;
+      box-shadow: 0 0 80px rgba(255, 220, 0, 0.4);
+      padding: 20px;
+      gap: 25px;
+      align-items: center;
+    }
+    #canvas-container {
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 0 40px rgba(255, 200, 0, 0.3);
+    }
+    .controls {
+      background: rgba(0, 0, 0, 0.92);
+      padding: 22px;
+      border-radius: 14px;
+      width: 260px;
+      color: #ff0;
+      box-shadow: 0 0 30px rgba(255, 200, 0, 0.4);
+      border: 1px solid #cc0;
+    }
+    .controls h2 {
+      font-size: 1.45rem;
+      margin-bottom: 20px;
+      text-align: center;
+      text-shadow: 0 0 15px #ff0;
+    }
+    .control-row {
+      margin-bottom: 18px;
+    }
+    .control-row label {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+    input[type="range"] {
+      width: 100%;
+      accent-color: #ff0;
+    }
+    .value {
+      float: right;
+      font-family: monospace;
+      font-size: 15px;
+    }
+    .buttons {
+      display: flex;
+      gap: 12px;
+      margin-top: 10px;
+    }
+    button {
+      flex: 1;
+      padding: 12px;
+      background: #111;
+      color: #ff0;
+      border: 2px solid #ff0;
+      border-radius: 10px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button:hover {
+      background: #ff0;
+      color: #111;
+    }
+    .footer {
+      position: absolute;
+      bottom: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 13px;
+      opacity: 0.7;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.13/lib/p5.min.js"></script>
+</head>
+<body>
+
+  <div class="main">
+    <!-- Canvas -->
+    <div id="canvas-container"></div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <h2>🌻 Growing Sunflower</h2>
+      
+      <div class="control-row">
+        <label>Seeds: <span id="pointsVal" class="value">800</span></label>
+        <input type="range" id="pointsSlider" min="100" max="2000" value="800" step="50">
+      </div>
+      
+      <div class="control-row">
+        <label>Scale: <span id="scaleVal" class="value">68</span></label>
+        <input type="range" id="scaleSlider" min="40" max="110" value="68" step="1">
+      </div>
+      
+      <div class="control-row">
+        <label>Sway: <span id="swayVal" class="value">18</span></label>
+        <input type="range" id="swaySlider" min="0" max="45" value="18" step="1">
+      </div>
+      
+      <div class="control-row">
+        <label>Speed: <span id="speedVal" class="value">0.45</span></label>
+        <input type="range" id="speedSlider" min="0.1" max="2" value="0.45" step="0.05">
+      </div>
+
+      <div class="buttons">
+        <button id="pauseBtn">Pause</button>
+        <button id="resetBtn">Reset & Grow</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Phyllotaxis Sunflower • Real-time growth
+  </div>
+
+  <script>
+    let stemHeight = 0;
+    let maxStemHeight = 420;
+    let seeds = [];
+    let currentSeeds = 0;
+    let maxSeeds = 800;
+    let paused = false;
+    let t = 0;
+
+    let scaleFactor = 68;
+    let swayAmount = 18;
+    let growthSpeed = 0.45;
+
+    const GOLDEN_ANGLE = 2.399963229728653; // 137.5°
+
+    function setup() {
+      let canvas = createCanvas(560, 680);
+      canvas.parent('canvas-container');
+      background(2, 8, 2);
+    }
+
+    function addSeeds(count) {
+      for (let i = 0; i < count && currentSeeds < maxSeeds; i++) {
+        let n = currentSeeds + seeds.length;
+        let angle = n * GOLDEN_ANGLE;
+        let r = 3.5 * Math.sqrt(n);           // classic phyllotaxis
+        seeds.push({ angle: angle, radius: r });
+        currentSeeds++;
+      }
+    }
+
+    function resetSunflower() {
+      stemHeight = 0;
+      seeds = [];
+      currentSeeds = 0;
+    }
+
+    function draw() {
+      if (!paused) {
+        // Grow stem
+        if (stemHeight < maxStemHeight) {
+          stemHeight += 6 * growthSpeed;
+        }
+        // Add seeds gradually once stem is tall enough
+        if (stemHeight > maxStemHeight * 0.75) {
+          let add = Math.floor(12 * growthSpeed);
+          addSeeds(add);
+        }
+        t += 0.028;
+      }
+
+      background(2, 8, 2, 35);
+
+      let cx = width / 2;
+      let baseY = height - 40;
+      let headY = baseY - stemHeight;
+
+      // === STEM (with sway) ===
+      let sway = Math.sin(t * 1.6) * (swayAmount / 8);
+      stroke(40, 180, 60);
+      strokeWeight(18);
+      line(cx + sway * 0.3, baseY, cx + sway * 0.6, headY);
+
+      stroke(34, 140, 45);
+      strokeWeight(12);
+      line(cx + sway * 0.3, baseY, cx + sway * 0.6, headY);
+
+      // === LEAVES (appear as stem grows) ===
+      noStroke();
+      fill(34, 160, 55);
+      let leafCount = Math.floor(stemHeight / 90);
+      for (let i = 1; i <= leafCount && i < 6; i++) {
+        let leafY = baseY - (stemHeight * i / 5);
+        let leafSway = Math.sin(t * 2 + i) * (swayAmount / 6);
+        
+        // Left leaf
+        push();
+        translate(cx - 22 + leafSway, leafY);
+        rotate(-0.8);
+        ellipse(0, 0, 68, 22);
+        pop();
+        
+        // Right leaf
+        push();
+        translate(cx + 22 + leafSway * 1.2, leafY);
+        rotate(0.8);
+        ellipse(0, 0, 68, 22);
+        pop();
+      }
+
+      // === FLOWER HEAD ===
+      if (stemHeight > maxStemHeight * 0.65) {
+        let headRadius = map(stemHeight, maxStemHeight * 0.65, maxStemHeight, 8, scaleFactor);
+        
+        // Head base (brown disk)
+        fill(120, 70, 30);
+        noStroke();
+        circle(cx + sway * 0.8, headY, headRadius * 1.9);
+        
+        // Petals (golden yellow)
+        fill(255, 200, 40);
+        let petalAngle = t * 0.8;
+        for (let i = 0; i < 16; i++) {
+          let a = petalAngle + i * (TWO_PI / 16);
+          let px = cx + sway * 0.8 + headRadius * 1.1 * cos(a);
+          let py = headY + headRadius * 1.1 * sin(a);
+          push();
+          translate(px, py);
+          rotate(a + PI/2);
+          ellipse(0, 0, headRadius * 0.9, 22);
+          pop();
+        }
+        
+        // Seeds (phyllotaxis spiral)
+        fill(255, 220, 60);
+        for (let i = 0; i < seeds.length; i++) {
+          let s = seeds[i];
+          let px = cx + sway * 0.8 + s.radius * cos(s.angle);
+          let py = headY + s.radius * sin(s.angle);
+          let size = map(i, 0, maxSeeds, 4, 9);
+          circle(px, py, size);
+        }
+        
+        // Dark center
+        fill(80, 50, 20);
+        circle(cx + sway * 0.8, headY, headRadius * 0.65);
+      }
+
+      // Live counter
+      fill(255, 220, 60);
+      noStroke();
+      textSize(14);
+      text("Seeds: " + currentSeeds + " / " + maxSeeds, 22, height - 18);
+    }
+
+    // === CONTROLS ===
+    window.onload = () => {
+      document.getElementById('pointsSlider').addEventListener('input', function() {
+        maxSeeds = parseInt(this.value);
+        document.getElementById('pointsVal').textContent = maxSeeds;
+      });
+      document.getElementById('scaleSlider').addEventListener('input', function() {
+        scaleFactor = parseFloat(this.value);
+        document.getElementById('scaleVal').textContent = scaleFactor;
+      });
+      document.getElementById('swaySlider').addEventListener('input', function() {
+        swayAmount = parseFloat(this.value);
+        document.getElementById('swayVal').textContent = swayAmount;
+      });
+      document.getElementById('speedSlider').addEventListener('input', function() {
+        growthSpeed = parseFloat(this.value);
+        document.getElementById('speedVal').textContent = growthSpeed.toFixed(2);
+      });
+      document.getElementById('pauseBtn').addEventListener('click', function() {
+        paused = !paused;
+        this.textContent = paused ? 'Resume' : 'Pause';
+      });
+      document.getElementById('resetBtn').addEventListener('click', resetSunflower);
+    };
+  </script>
+</body>
+</html>
